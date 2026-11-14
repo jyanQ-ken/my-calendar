@@ -1,6 +1,6 @@
 'use strict';
 
-/* ===== やさしいカレンダー script.js =====
+/* ===== My Calendar script.js =====
    できること
    ・月のカレンダー表示 と、上から順に並ぶ「一覧表示」(祝日は holidays.js が自動で計算)
    ・「休み」と「印(○×△)」を、まとめて付ける
@@ -56,8 +56,6 @@ const exText = $('exText');
 const exMessage = $('exMessage');
 const exResult = $('exResult');
 const exCopy = $('exCopy');
-
-const helpOverlay = $('helpOverlay');
 
 /* ---------- いまの状態 ---------- */
 let viewYear;              // 表示中の年
@@ -294,6 +292,8 @@ function renderCalendar() {
   nextBtn.disabled = (viewYear === HOLIDAY_MAX_YEAR && viewMonth === 12);
 
   const isList = view === 'list';
+  // 月表示のときだけ、画面に固定して動かさない(CSSが html[data-view] を見て切り替える)
+  document.documentElement.dataset.view = view;
   weekdays.hidden = isList;
   grid.hidden = isList;
   dayList.hidden = !isList;
@@ -376,9 +376,10 @@ function buildToolbar() {
 }
 
 function hintText() {
-  if (mode === 'write') return '日にちをタップすると、予定メモを書けます。';
+  // 1行に収まる短さにする(画面下の操作バーを低くするため)
+  if (mode === 'write') return '日にちをタップして、予定メモを書く';
   const name = mode === 'rest' ? '休み' : MARK_BY_ID[mode].symbol;
-  return `「${name}」を付けています。日にちをタップ(もう一度で取り消し)。終わったら「予定メモ」を押します。`;
+  return `「${name}」を付け中。終わったら「予定メモ」を押す`;
 }
 
 function setMode(newMode) {
@@ -603,9 +604,6 @@ exportOverlay.addEventListener('change', refreshExport);
 exCopy.addEventListener('click', copyExport);
 $('exClose').addEventListener('click', closeOverlay);
 
-/* ---------- 使い方の画面 ---------- */
-$('helpClose').addEventListener('click', closeOverlay);
-
 /* ---------- ボタンとイベントをつなぐ ---------- */
 grid.addEventListener('click', e => {
   const cell = e.target.closest('.day');
@@ -631,10 +629,9 @@ prevBtn.addEventListener('click', () => moveMonth(-1));
 nextBtn.addEventListener('click', () => moveMonth(1));
 $('todayBtn').addEventListener('click', goToday);
 $('exportBtn').addEventListener('click', openExport);
-$('helpBtn').addEventListener('click', () => showOverlay(helpOverlay));
 
 // ポップアップの外側(黒い部分)をタップしたら閉じる。予定メモは自動保存済みなので安心
-[memoOverlay, exportOverlay, helpOverlay].forEach(overlay => {
+[memoOverlay, exportOverlay].forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target === overlay) closeOverlay();
   });

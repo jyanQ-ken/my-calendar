@@ -1,33 +1,55 @@
 /* ===== My Calendar style.css =====
-   デザインの考え方(ソフトモダン)
-   ・薄いグレーの背景に、白いカード(日ごとの区切りがはっきり)
-   ・ボタンは丸く大きく。選んでいるものは、色が付く
-   ・文字を大きく、色をはっきり(高齢の方にも見やすく)
-   ・色だけに頼らない(休みは「ピンク背景」+「休」の文字)
+   つくりの考え方
+   ・月表示は、画面にぴったり固定して、動かさない(上下の部分は小さめ)
+   ・一覧表示は、上下にスクロールできる
+   ・色・丸み・影・文字の太さは、いちばん上の「部品の名前(:root)」にまとめてある
+     → デザインを変えるときは、まずここを書き換える
+   ・文字は大きく、色はくっきり(高齢の方にも見やすく)
+   ・色だけに頼らない(休みは「背景の色」+「休」の文字)
    ・着せ替えはなし。この見た目だけ
 */
 
 :root {
   color-scheme: light;
-  --text: #1f2937;
-  --bg: #f3f4f6;       /* ページの背景 */
-  --card: #ffffff;     /* 日にちのカード */
-  --line: #e5e7eb;
-  --edge: #9ca3af;     /* 入力欄・ボタンのふち */
-  --muted: #4b5563;    /* 曜日の文字など */
-  --red: #c62828;      /* 日曜・祝日 */
-  --blue: #1d4ed8;     /* 土曜 */
-  --accent: #4f46e5;   /* 今日・選んでいるボタン */
-  --rest-bg: #fde4e8;  /* 休みの背景 */
-  --rest-tag: #e11d48; /* 「休」の文字の背景 */
-  --warn: #f59e0b;     /* 印つけ中の目印 */
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.1);
-  --shadow-button: 0 1px 3px rgba(0, 0, 0, 0.16);
 
-  /* 印の色 */
-  --maru: #0f766e;
-  --sankaku: #b45309;
-  --batsu: #c62828;
+  /* 色 */
+  --text: #1c1c1e;
+  --muted: #636366;    /* 曜日・補足の文字 */
+  --bg: #f2f2f7;       /* ページの背景 */
+  --card: #ffffff;     /* 日にちのカード */
+  --line: #e5e5ea;     /* 細い線 */
+  --edge: #c7c7cc;     /* 入力欄・ボタンのふち */
+  --red: #d70015;      /* 日曜・祝日 */
+  --blue: #0a60c9;     /* 土曜 */
+  --accent: #0a60c9;   /* 今日・選んでいるボタン・文字ボタン */
+  --accent-text: #ffffff;
+  --accent-soft: #e8f0fc;
+  --rest-bg: #ffe4e8;  /* 休みの背景 */
+  --rest-tag: #d70040; /* 「休」の文字の背景 */
+  --warn: #ff9f0a;     /* 印つけ中の目印(外わく) */
+  --warn-soft: #fff1d6;
+  --maru: #1a7f37;
+  --sankaku: #b25000;
+  --batsu: #d70015;
+  --segment-bg: #e3e3e8;                  /* 「月表示/一覧表示」スイッチの背景 */
+  --toolbar-bg: rgba(255, 255, 255, 0.92); /* 下の操作バー(すりガラス) */
+
+  /* 形 */
+  --r-card: 10px;
+  --r-btn: 10px;
+  --r-tag: 6px;
+  --r-sheet: 14px;
+  --r-input: 10px;
+  --card-border: 0 solid transparent;
+
+  /* 影(ほとんど使わない。「0 0 0 0 transparent」は「影なし」の意味) */
+  --shadow-card: 0 0 0 0 transparent;
+  --shadow-button: 0 0 0 0 transparent;
+  --shadow-toolbar: 0 -0.5px 0 #d1d1d6;
+
+  /* 文字の太さ */
+  --w-strong: 600;
+  --w-mid: 500;
 }
 
 * { box-sizing: border-box; }
@@ -43,7 +65,7 @@ body {
   font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", sans-serif;
   font-size: 18px;
   line-height: 1.5;
-  padding-bottom: 190px; /* 画面下の操作バーに隠れないように */
+  padding-bottom: calc(100px + env(safe-area-inset-bottom)); /* 一覧表示: 下の操作バーに隠れないように */
 }
 
 body.modal-open { overflow: hidden; }
@@ -58,18 +80,18 @@ button { font: inherit; touch-action: manipulation; -webkit-tap-highlight-color:
 .sub-btn,
 .mode-btn,
 .btn {
-  border: 0;
-  border-radius: 999px;
-  background: #fff;
+  border: var(--card-border);
+  border-radius: var(--r-btn);
+  background: var(--card);
   color: var(--text);
   box-shadow: var(--shadow-button);
-  font-weight: 800;
+  font-weight: var(--w-strong);
   white-space: nowrap;
   cursor: pointer;
 }
 
-/* ---------- 上の部分(月の切り替え・表示の切り替え) ---------- */
-.app-header { padding-top: 12px; }
+/* ---------- 上の部分(小さめ) ---------- */
+.app-header { padding-top: 8px; }
 
 .month-nav {
   display: grid;
@@ -80,36 +102,57 @@ button { font: inherit; touch-action: manipulation; -webkit-tap-highlight-color:
 
 .month-title {
   margin: 0;
-  font-size: 26px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: var(--w-strong);
   text-align: center;
   white-space: nowrap;
 }
 
 .nav-btn {
-  min-height: 52px;
-  font-size: 16px;
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: var(--w-mid);
   padding: 0 4px;
+  background: transparent;   /* 月の切り替えは、文字だけのボタン */
+  color: var(--accent);
 }
 .nav-btn:disabled { opacity: 0.35; cursor: default; }
 
-/* 表示のしかた(カレンダー表示 / 一覧表示) */
-.view-switch { display: flex; gap: 6px; margin: 8px 0 0; }
+/* 2段目: 表示のしかた(月表示 / 一覧表示) と、今日・書き出し */
+.header-row { display: flex; gap: 6px; margin: 6px 0; }
+
+/* 「月表示 / 一覧表示」は、iPhone標準アプリのような切り替えスイッチ */
+.view-switch {
+  display: flex;
+  gap: 0;
+  flex: 0 0 auto;
+  padding: 2px;
+  background: var(--segment-bg);
+  border-radius: 9px;
+}
 
 .view-btn {
-  flex: 1;
-  min-height: 46px;
-  font-size: 16px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: var(--w-mid);
+  background: transparent;
+  box-shadow: none;
+  border-radius: 7px;
 }
 /* いま見ている表示 */
-.view-btn.active { background: var(--accent); color: #fff; }
+.view-btn.active { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
 
-.sub-nav { display: flex; gap: 6px; margin: 8px 0 10px; }
+.sub-nav { display: flex; gap: 4px; flex: 1 1 auto; }
 
+/* 今日・書き出し は、文字だけのボタン */
 .sub-btn {
   flex: 1;
-  min-height: 46px;
-  font-size: 16px;
+  min-height: 36px;
+  padding: 0 6px;
+  font-size: 14px;
+  font-weight: var(--w-mid);
+  background: transparent;
   color: var(--accent);
 }
 
@@ -123,10 +166,10 @@ button { font: inherit; touch-action: manipulation; -webkit-tap-highlight-color:
 
 .weekdays div {
   text-align: center;
-  font-weight: 800;
-  font-size: 14px;
+  font-weight: var(--w-strong);
+  font-size: 13px;
   color: var(--muted);
-  padding: 6px 0;
+  padding: 2px 0 4px;
 }
 .weekdays .w-sun { color: var(--red); }
 .weekdays .w-sat { color: var(--blue); }
@@ -143,7 +186,8 @@ button { font: inherit; touch-action: manipulation; -webkit-tap-highlight-color:
 .day {
   background: var(--card);
   color: var(--text);
-  border-radius: 12px;
+  border: var(--card-border);
+  border-radius: var(--r-card);
   box-shadow: var(--shadow-card);
   text-align: left;
   padding: 4px 2px;
@@ -158,7 +202,7 @@ button { font: inherit; touch-action: manipulation; -webkit-tap-highlight-color:
 
 .day-num {
   font-size: 19px;
-  font-weight: 800;
+  font-weight: var(--w-strong);
   line-height: 1.1;
   min-width: 24px;
   padding: 1px 2px;
@@ -170,22 +214,22 @@ button { font: inherit; touch-action: manipulation; -webkit-tap-highlight-color:
 .day.sun .day-num { color: var(--red); }
 .day.holiday .day-num { color: var(--red); }
 
-/* 休み: ピンク背景 + 「休」の文字 */
+/* 休み: 背景の色 + 「休」の文字 */
 .day.rest { background: var(--rest-bg); }
 
-/* 今日: 藍紫の丸 + 藍紫のふち */
+/* 今日: アクセント色の丸 + ふち */
 .day.today { box-shadow: inset 0 0 0 2px var(--accent), var(--shadow-card); }
-.day.today .day-num { background: var(--accent); color: #fff; }
+.day.today .day-num { background: var(--accent); color: var(--accent-text); }
 
 .day-tag {
   position: absolute;
   top: 4px;
   right: 3px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: var(--w-strong);
   line-height: 1.3;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--r-tag);
   background: var(--rest-tag);
   color: #fff;
 }
@@ -193,7 +237,7 @@ button { font: inherit; touch-action: manipulation; -webkit-tap-highlight-color:
 .holiday-name {
   width: 100%;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--w-mid);
   line-height: 1.1;
   color: var(--red);
   white-space: nowrap;
@@ -204,7 +248,7 @@ button { font: inherit; touch-action: manipulation; -webkit-tap-highlight-color:
   display: flex;
   font-size: 15px;
   line-height: 1.1;
-  font-weight: 800;
+  font-weight: var(--w-strong);
 }
 
 .memo-preview {
@@ -230,7 +274,7 @@ button { font: inherit; touch-action: manipulation; -webkit-tap-highlight-color:
   -webkit-text-stroke: 0.7px currentColor;
 }
 
-/* 印つけ中は、カレンダー(一覧)の外わくを黄色にして目立たせる */
+/* 印つけ中は、カレンダー(一覧)の外わくを目立たせる */
 body:not([data-mode="write"]) .grid,
 body:not([data-mode="write"]) .day-list {
   outline: 4px solid var(--warn);
@@ -252,8 +296,8 @@ body:not([data-mode="write"]) .day-list {
   width: 100%;
   min-height: 60px;
   padding: 8px;
-  border: 0;
-  border-radius: 12px;
+  border: var(--card-border);
+  border-radius: var(--r-card);
   box-shadow: var(--shadow-card);
   background: var(--card);
   color: var(--text);
@@ -270,7 +314,7 @@ body:not([data-mode="write"]) .day-list {
 
 .row-day {
   font-size: 28px;
-  font-weight: 800;
+  font-weight: var(--w-strong);
   line-height: 1.1;
   min-width: 42px;
   padding: 0 2px;
@@ -278,16 +322,16 @@ body:not([data-mode="write"]) .day-list {
   border-radius: 999px;
 }
 
-.row-dow { font-size: 17px; font-weight: 800; }
+.row-dow { font-size: 17px; font-weight: var(--w-strong); }
 
 .row.sat .row-day, .row.sat .row-dow { color: var(--blue); }
 .row.sun .row-day, .row.sun .row-dow { color: var(--red); }
 .row.holiday .row-day, .row.holiday .row-dow { color: var(--red); }
 
-/* 休み: ピンク背景 + 「休み」の文字 / 今日: 藍紫の丸 + 藍紫のふち */
+/* 休み: 背景の色 + 「休み」の文字 / 今日: アクセント色の丸 + ふち */
 .row.rest { background: var(--rest-bg); }
 .row.today { box-shadow: inset 0 0 0 2px var(--accent), var(--shadow-card); }
-.row.today .row-day { background: var(--accent); color: #fff; }
+.row.today .row-day { background: var(--accent); color: var(--accent-text); }
 
 .row-body {
   flex: 1;
@@ -302,22 +346,22 @@ body:not([data-mode="write"]) .day-list {
 
 .row-rest {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: var(--w-strong);
   line-height: 1.5;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: var(--r-tag);
   background: var(--rest-tag);
   color: #fff;
 }
 
-.row-holiday { font-size: 16px; font-weight: 800; color: var(--red); }
+.row-holiday { font-size: 16px; font-weight: var(--w-strong); color: var(--red); }
 
 .row-marks {
   display: flex;
   gap: 4px;
   font-size: 24px;
   line-height: 1.1;
-  font-weight: 800;
+  font-weight: var(--w-strong);
 }
 
 /* 予定メモは3行まで表示(全部は、日にちをタップして読む) */
@@ -334,37 +378,38 @@ body:not([data-mode="write"]) .day-list {
 
 /* 一覧の一番下の「前の月・次の月」 */
 .list-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 6px; }
+.list-nav .nav-btn { background: var(--card); }
 
-/* ---------- 画面下の操作バー ---------- */
+/* ---------- 画面下の操作バー(低め) ---------- */
 .toolbar {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  background: #fff;
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.12);
-  padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+  background: var(--toolbar-bg);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: var(--shadow-toolbar);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
   z-index: 10;
 }
 
 .toolbar-inner { max-width: 640px; margin: 0 auto; }
 
 .mode-hint {
-  margin: 0 0 6px;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.35;
+  margin: 0 0 4px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: var(--w-mid);
+  line-height: 24px;
   text-align: center;
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
 }
 body:not([data-mode="write"]) .mode-hint {
-  background: #fef3c7;
-  border-radius: 12px;
-  padding: 2px 8px;
+  background: var(--warn-soft);
+  border-radius: 8px;
 }
 
 .mode-buttons {
@@ -374,18 +419,65 @@ body:not([data-mode="write"]) .mode-hint {
 }
 
 .mode-btn {
-  min-height: 56px;
-  font-size: 18px;
+  min-height: 44px;
+  font-size: 16px;
   padding: 0;
+  background: var(--bg);
 }
-.mode-btn .mark-sym { font-size: 32px; line-height: 1; }
+.mode-btn .mark-sym { font-size: 26px; line-height: 1; }
 .mode-btn[data-mode="rest"] { background: var(--rest-bg); }
 
-/* 選ばれているボタン: 藍紫地に白文字 */
-.mode-btn.active { background: var(--accent); color: #fff; }
-.mode-btn.active .mark-sym { color: #fff; }
+/* 選ばれているボタン */
+.mode-btn.active { background: var(--accent); color: var(--accent-text); }
+.mode-btn.active .mark-sym { color: var(--accent-text); }
 
-/* ---------- ポップアップ(予定メモ・書き出し・使い方) ---------- */
+/* ---------- 月表示: 画面に固定(スクロールしない) ---------- */
+html[data-view="calendar"],
+html[data-view="calendar"] body { overscroll-behavior: none; }
+
+html[data-view="calendar"] body {
+  position: fixed;      /* 画面にぴったり固定する */
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+html[data-view="calendar"] .wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-view="calendar"] main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 日にちのマスが、あまった高さを等しく分け合って、画面いっぱいに広がる */
+html[data-view="calendar"] .grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-auto-rows: minmax(0, 1fr);
+  margin-bottom: 8px;
+}
+
+html[data-view="calendar"] .day,
+html[data-view="calendar"] .day-empty { min-height: 0; }
+
+/* 操作バーは、固定ではなく、画面の一番下に置く */
+html[data-view="calendar"] .toolbar {
+  position: static;
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+/* ---------- ポップアップ(予定メモ・書き出し) ---------- */
 .overlay {
   position: fixed;
   inset: 0;
@@ -401,17 +493,16 @@ body:not([data-mode="write"]) .mode-hint {
 .sheet {
   width: 100%;
   max-width: 560px;
-  background: #fff;
-  border-radius: 20px;
+  background: var(--card);
+  border-radius: var(--r-sheet);
   padding: 18px;
 }
 .sheet:focus { outline: none; }
 
 .sheet h2 { margin: 0 0 6px; font-size: 22px; }
-.sheet h3 { margin: 18px 0 4px; font-size: 18px; }
 .sheet p { margin: 6px 0; }
 
-.sheet-sub { font-weight: 700; color: var(--red); margin: 0 0 8px; }
+.sheet-sub { font-weight: var(--w-mid); color: var(--red); margin: 0 0 8px; }
 .note { font-size: 15px; color: var(--muted); }
 
 textarea,
@@ -419,9 +510,9 @@ input[type="date"] {
   font: inherit;
   font-size: 18px;
   border: 2px solid var(--edge);
-  border-radius: 12px;
+  border-radius: var(--r-input);
   padding: 8px 10px;
-  background: #fff;
+  background: var(--card);
   color: var(--text);
 }
 
@@ -434,15 +525,16 @@ textarea { width: 100%; min-height: 150px; resize: vertical; }
   min-height: 52px;
   font-size: 18px;
   padding: 0 10px;
-  box-shadow: inset 0 0 0 2px var(--edge);
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 .btn:disabled { opacity: 0.4; cursor: default; }
-.btn-primary { background: var(--accent); color: #fff; box-shadow: none; }
-.btn-danger { color: var(--red); box-shadow: inset 0 0 0 2px var(--red); }
+.btn-primary { background: var(--accent); color: var(--accent-text); box-shadow: none; }
+.btn-danger { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
 
 /* 書き出し画面 */
 .field { border: 0; padding: 0; margin: 12px 0 0; }
-.field legend { font-weight: 800; padding: 0; margin-bottom: 4px; }
+.field legend { font-weight: var(--w-strong); padding: 0; margin-bottom: 4px; }
 .date-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 
 .checks { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -453,36 +545,40 @@ textarea { width: 100%; min-height: 150px; resize: vertical; }
   min-height: 46px;
   padding: 0 14px;
   border: 2px solid var(--line);
-  border-radius: 999px;
-  background: #fff;
-  font-weight: 700;
+  border-radius: var(--r-btn);
+  background: var(--card);
+  font-weight: var(--w-mid);
   cursor: pointer;
 }
-.check:has(input:checked) { border-color: var(--accent); background: #eef2ff; }
+.check:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 .check input { width: 22px; height: 22px; accent-color: var(--accent); }
 .check .mark-sym { font-size: 24px; }
 .check-text { margin-top: 12px; }
 
-.ex-message { font-weight: 700; min-height: 28px; }
+.ex-message { font-weight: var(--w-mid); min-height: 28px; }
 
 #exResult { min-height: 160px; font-size: 15px; }
 
-/* 使い方 */
-.help-list { padding-left: 1.3em; margin: 4px 0; }
-.help-list li { margin: 6px 0; }
+/* 書き出し画面の一番下の、小さな注意書き */
+.fineprint {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.fineprint p { margin: 4px 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
 
 /* 上に出る小さなお知らせ */
 .toast {
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: 200px;
+  bottom: calc(96px + env(safe-area-inset-bottom));
   max-width: 616px;
   margin: 0 auto;
   background: #1f2937;
   color: #fff;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: var(--w-mid);
   padding: 12px 16px;
   border-radius: 16px;
   text-align: center;
@@ -507,10 +603,17 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* ---------- 背の低い画面(小さいスマホ): 月表示のマスの中身を少し減らす ---------- */
+@media (max-height: 640px) {
+  html[data-view="calendar"] .memo-preview { display: none; }
+  html[data-view="calendar"] .day-num { font-size: 17px; }
+}
+
 /* ---------- 画面がせまいとき(小さいスマホ) ---------- */
 @media (max-width: 340px) {
-  .month-title { font-size: 22px; }
-  .nav-btn, .sub-btn, .view-btn { font-size: 14px; }
+  .month-title { font-size: 20px; }
+  .nav-btn, .view-btn, .sub-btn { font-size: 13px; }
+  .view-btn { padding: 0 8px; }
   .day-num { font-size: 17px; min-width: 20px; }
   .day-tag { font-size: 9px; padding: 0 3px; right: 2px; }
   .holiday-name { font-size: 9px; }
@@ -520,12 +623,28 @@ textarea:focus-visible {
 
 /* ---------- 画面が広いとき(タブレット・パソコン) ---------- */
 @media (min-width: 480px) {
-  .month-title { font-size: 28px; }
-  .nav-btn, .sub-btn { font-size: 18px; }
+  .month-title { font-size: 26px; }
+  .nav-btn, .view-btn, .sub-btn { font-size: 16px; }
   .day, .day-empty { min-height: 96px; }
   .day-num { font-size: 22px; }
   .day-tag { font-size: 12px; }
   .holiday-name { font-size: 12px; }
   .marks { font-size: 19px; }
   .memo-preview { font-size: 13px; }
+}
+
+/* ---------- 横向きなど、とても背が低い画面: 月表示も、ふつうにスクロールできるようにもどす ---------- */
+@media (max-height: 460px) {
+  html[data-view="calendar"] body {
+    position: static;
+    display: block;
+    overflow: visible;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+  html[data-view="calendar"] .wrap { display: block; width: auto; }
+  html[data-view="calendar"] main { display: block; }
+  html[data-view="calendar"] .grid { grid-auto-rows: minmax(64px, auto); margin-bottom: 0; }
+  html[data-view="calendar"] .day,
+  html[data-view="calendar"] .day-empty { min-height: 64px; }
+  html[data-view="calendar"] .toolbar { position: fixed; }
 }
