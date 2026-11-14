@@ -5,14 +5,14 @@
    ・月のカレンダー表示 と、上から順に並ぶ「一覧表示」(祝日は holidays.js が自動で計算)
    ・「休み」と「印(○×△)」を、まとめて付ける
    ・日付ごとに「予定メモ」を書く
-   ・日付に関係なく長く残せる「メモ」(シートを自由に増やせる。チェック付きにもできる)
+   ・日付に関係なく自由に書ける「ノート」(シートは画面の下から増やせる。チェック付きにもできる)
    ・条件を選んで、一覧を書き出す(コピー)
 
    保存のしかた
    ・ブラウザの localStorage に、この形で保存します
      { "2026-11-03": { rest: true, marks: ["maru"], text: "ごはん会" }, ... }
      (text が「予定メモ」の中身です)
-   ・「メモ」(シート)は、別の場所 easyCalendarMemos に、この形で保存します
+   ・「ノート」(シート)は、別の場所 easyCalendarMemos に、この形で保存します
      { sheets: [{ id, name: "買い物", text: "牛乳\n✓ 卵", checklist: true }, ...], activeId }
      (チェックした行は、文章の頭に「✓ 」が付くだけ。だから、チェック付きを切り替えても内容は消えません)
    ・外部には一切送りません。
@@ -65,17 +65,20 @@ const exMessage = $('exMessage');
 const exResult = $('exResult');
 const exCopy = $('exCopy');
 
-// メモ(シート)の部品
+// ノート(シート)の部品
 const memoView = $('memoView');
-const sheetTabs = $('sheetTabs');
-const sheetAdd = $('sheetAdd');
+const sheetTitle = $('sheetTitle');           // 開いているシートの名前(上に大きく)
+const sheetMenuBtn = $('sheetMenuBtn');       // 「シートの操作」ボタン
+const sheetTabs = $('sheetTabs');             // 画面の下のシートのタブ
+const sheetAdd = $('sheetAdd');               // 画面の下の「＋」
 const sheetText = $('sheetText');
 const sheetRows = $('sheetRows');
-const sheetChecklist = $('sheetChecklist');
 const sheetClearDone = $('sheetClearDone');
-const sheetRename = $('sheetRename');
-const sheetCopy = $('sheetCopy');
-const sheetDelete = $('sheetDelete');
+
+// シートの操作メニュー
+const sheetMenu = $('sheetMenu');
+const menuTitle = $('menuTitle');
+const menuChecklistState = $('menuChecklistState');
 
 // シートの名前を入れる小さな画面
 const nameOverlay = $('nameOverlay');
@@ -661,7 +664,7 @@ function newSheetId() {
 
 function defaultMemos() {
   const id = newSheetId();
-  return { sheets: [{ id: id, name: 'メモ', text: '', checklist: false }], activeId: id };
+  return { sheets: [{ id: id, name: 'シート1', text: '', checklist: false }], activeId: id };
 }
 
 // 保存してあるメモを読む。こわれたデータのときは、空のメモ1枚から始める
@@ -676,7 +679,7 @@ function loadMemos() {
           .slice(0, MAX_SHEETS)
           .map(s => ({
             id: (typeof s.id === 'string' && s.id) ? s.id : newSheetId(),
-            name: (typeof s.name === 'string' && s.name.trim() !== '') ? s.name.trim().slice(0, MAX_SHEET_NAME) : 'メモ',
+            name: (typeof s.name === 'string' && s.name.trim() !== '') ? s.name.trim().slice(0, MAX_SHEET_NAME) : 'シート',
             text: typeof s.text === 'string' ? s.text : '',
             checklist: s.checklist === true,
           }));
@@ -757,6 +760,11 @@ function autoGrow(box) {
 function renderRows() {
   sheetRows.innerHTML = '';
   parseLines(activeSheet().text).forEach(line => sheetRows.appendChild(createRow(line)));
+  // 空のシートの最初の行には、薄い説明を出す
+  const firstInput = sheetRows.querySelector('.row-text');
+  if (firstInput && sheetRows.querySelectorAll('.check-row').length === 1 && firstInput.value === '') {
+    firstInput.placeholder = 'やることを書く';
+  }
   // リストの一番下: 「＋ 行を追加」と「済みを消す」
   const footer = el('div', 'row-footer');
   const add = el('button', 'row-add', '＋ 行を追加');
@@ -794,7 +802,7 @@ function addRowAfter(row) {
 
 function renderSheetBody() {
   const sheet = activeSheet();
-  sheetChecklist.checked = sheet.checklist;
+  sheetTitle.textContent = sheet.name;
   sheetClearDone.hidden = !sheet.checklist;
   sheetText.hidden = sheet.checklist;
   sheetRows.hidden = !sheet.checklist;
@@ -815,7 +823,7 @@ function openNameDialog(mode) {
   }
   nameMode = mode;
   nameTitle.textContent = mode === 'add' ? '新しいシートの名前' : 'シートの名前を変える';
-  nameInput.value = mode === 'add' ? 'メモ' + (memos.sheets.length + 1) : activeSheet().name;
+  nameInput.value = mode === 'add' ? 'シート' + (memos.sheets.length + 1) : activeSheet().name;
   showOverlay(nameOverlay);
   nameInput.focus();
   nameInput.select();
@@ -933,16 +941,29 @@ sheetTabs.addEventListener('click', e => {
   renderMemoView();
 });
 
-sheetChecklist.addEventListener('change', () => {
-  activeSheet().checklist = sheetChecklist.checked;
+// 画面の下の「＋」: シートを増やす
+sheetAdd.addEventListener('click', () => openNameDialog('add'));
+
+// 「シートの操作」メニュー(名前を変える / チェックを付けられる形 / 内容をコピー / このシートを消す)
+function openSheetMenu() {
+  const sheet = activeSheet();
+  menuTitle.textContent = `「${sheet.name}」の操作`;
+  menuChecklistState.textContent = sheet.checklist ? 'オン' : 'オフ';
+  showOverlay(sheetMenu);
+}
+
+sheetMenuBtn.addEventListener('click', openSheetMenu);
+$('menuRename').addEventListener('click', () => openNameDialog('rename')); // メニューは、名前の画面に入れかわる
+$('menuChecklist').addEventListener('click', () => {
+  activeSheet().checklist = !activeSheet().checklist;
   saveMemos();
+  closeOverlay();
   renderSheetBody(); // 内容は文章のまま。見せ方だけ切り替わる
 });
+$('menuCopy').addEventListener('click', () => { closeOverlay(); copySheet(); });
+$('menuDelete').addEventListener('click', () => { closeOverlay(); deleteSheet(); });
+$('menuClose').addEventListener('click', closeOverlay);
 
-sheetAdd.addEventListener('click', () => openNameDialog('add'));
-sheetRename.addEventListener('click', () => openNameDialog('rename'));
-sheetDelete.addEventListener('click', deleteSheet);
-sheetCopy.addEventListener('click', copySheet);
 sheetClearDone.addEventListener('click', clearDoneRows);
 
 $('nameOk').addEventListener('click', submitName);
@@ -981,7 +1002,7 @@ $('todayBtn').addEventListener('click', goToday);
 $('exportBtn').addEventListener('click', openExport);
 
 // ポップアップの外側(黒い部分)をタップしたら閉じる。予定メモは自動保存済みなので安心
-[memoOverlay, exportOverlay, nameOverlay].forEach(overlay => {
+[memoOverlay, exportOverlay, nameOverlay, sheetMenu].forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target === overlay) closeOverlay();
   });

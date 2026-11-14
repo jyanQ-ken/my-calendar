@@ -380,24 +380,78 @@ body:not([data-mode="write"]) .day-list {
 .list-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 6px; }
 .list-nav .nav-btn { background: var(--card); }
 
-/* ---------- メモ(日付に関係なく、長く残せる。シートを自由に増やせる) ---------- */
-/* メモの画面では、月の切り替え・今日・書き出し・下の操作バーは使わないので隠す */
+/* ---------- ノート(日付に関係なく、自由に書ける。シートは画面の下から増やせる) ---------- */
+/* ノートの画面では、月の切り替え・今日・書き出し・カレンダー用の下の操作バーは使わないので隠す */
 html[data-view="memo"] .month-nav,
 html[data-view="memo"] .sub-nav,
 html[data-view="memo"] .toolbar { display: none; }
-html[data-view="memo"] body { padding-bottom: 24px; }
+/* 画面の下のシートのタブに、書く場所が隠れないように、下をあけておく */
+html[data-view="memo"] body { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
 
 .memo-view { display: flex; flex-direction: column; gap: 8px; }
 
-/* シートのタブ(横に並ぶ。はみ出したら横にスクロール) */
-.sheet-tabs-wrap { display: flex; align-items: center; gap: 6px; }
+/* ノートの上: いま開いているシートの名前と、「シートの操作」ボタン */
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+
+.sheet-title {
+  margin: 0;
+  min-width: 0;
+  font-size: 22px;
+  font-weight: var(--w-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheet-menu-btn {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-btn);
+  background: var(--card);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: var(--w-mid);
+  cursor: pointer;
+}
+
+/* ノートの下: シートのタブ。Excelのシートのように、画面の下から切り替え・増やせる */
+.sheet-bar {
+  display: none;               /* ノートの画面のときだけ出す */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: var(--segment-bg);
+  box-shadow: 0 -0.5px 0 #d1d1d6;
+}
+html[data-view="memo"] .sheet-bar { display: flex; }
+
+.sheet-add {
+  flex: 0 0 auto;
+  width: 44px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--accent);
+  font-size: 26px;
+  font-weight: var(--w-mid);
+  line-height: 1;
+  cursor: pointer;
+}
 
 .sheet-tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex: 1 1 auto;
   min-width: 0;
-  overflow-x: auto;
+  overflow-x: auto;            /* シートが多いときは、横にスクロール */
   padding: 2px 0;
   scrollbar-width: none;
 }
@@ -406,12 +460,12 @@ html[data-view="memo"] body { padding-bottom: 24px; }
 .sheet-tab {
   flex: 0 0 auto;
   min-height: 40px;
-  max-width: 70vw;
+  max-width: 60vw;
   padding: 0 16px;
   border: 0;
-  border-radius: var(--r-btn);
-  background: var(--segment-bg);
-  color: var(--text);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
   font-size: 16px;
   font-weight: var(--w-mid);
   white-space: nowrap;
@@ -419,27 +473,34 @@ html[data-view="memo"] body { padding-bottom: 24px; }
   text-overflow: ellipsis;
   cursor: pointer;
 }
-/* いま開いているシート */
-.sheet-tab.active { background: var(--accent); color: var(--accent-text); }
-
-.sheet-add {
-  flex: 0 0 auto;
-  width: 44px;
-  min-height: 40px;
-  border: 0;
-  border-radius: var(--r-btn);
+/* いま開いているシート(白いタブ) */
+.sheet-tab.active {
   background: var(--card);
   color: var(--accent);
-  font-size: 24px;
-  font-weight: var(--w-mid);
-  line-height: 1;
-  cursor: pointer;
+  font-weight: var(--w-strong);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* シートの操作(チェック付き・名前・コピー・消す) */
-.memo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.memo-actions .check { min-height: 40px; padding: 0 12px; font-size: 15px; }
-.memo-actions .btn { flex: 0 0 auto; min-height: 40px; padding: 0 14px; font-size: 15px; }
+/* 「シートの操作」メニュー */
+.menu-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--r-card);
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.menu-name { font-size: 17px; font-weight: var(--w-strong); }
+.menu-note { font-size: 13px; line-height: 1.4; color: var(--muted); }
+.menu-danger .menu-name { color: var(--red); }
 
 /* 書く場所 */
 .memo-paper {

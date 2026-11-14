@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body data-mode="write">
 
@@ -30,7 +30,7 @@
         <div class="view-switch" role="group" aria-label="表示のしかた">
           <button class="view-btn" type="button" data-view="calendar" aria-pressed="true">月表示</button>
           <button class="view-btn" type="button" data-view="list" aria-pressed="false">一覧表示</button>
-          <button class="view-btn" type="button" data-view="memo" aria-pressed="false">メモ</button>
+          <button class="view-btn" type="button" data-view="memo" aria-pressed="false">ノート</button>
         </div>
         <div class="sub-nav">
           <button id="todayBtn" class="sub-btn" type="button">今日</button>
@@ -48,21 +48,15 @@
       <!-- 一覧表示(1日〜月末が上から順に並ぶ。こちらはスクロールできる) -->
       <div id="dayList" class="day-list" hidden></div>
 
-      <!-- メモ(日付に関係なく、長く残せる。シートを自由に増やせる) -->
-      <section id="memoView" class="memo-view" hidden aria-label="メモ">
-        <div class="sheet-tabs-wrap">
-          <div id="sheetTabs" class="sheet-tabs" role="tablist" aria-label="シート"></div>
-          <button id="sheetAdd" class="sheet-add" type="button" aria-label="シートを増やす">＋</button>
-        </div>
-        <div class="memo-actions">
-          <label class="check"><input type="checkbox" id="sheetChecklist"> チェック付き</label>
-          <button id="sheetRename" class="btn" type="button">名前</button>
-          <button id="sheetCopy" class="btn" type="button">コピー</button>
-          <button id="sheetDelete" class="btn btn-danger" type="button">消す</button>
+      <!-- ノート(日付に関係なく、自由に書ける。シートは画面の下から切り替え・増やせる) -->
+      <section id="memoView" class="memo-view" hidden aria-label="ノート">
+        <div class="sheet-head">
+          <h2 id="sheetTitle" class="sheet-title"></h2>
+          <button id="sheetMenuBtn" class="sheet-menu-btn" type="button">シートの操作 ▾</button>
         </div>
         <div class="memo-paper">
-          <label for="sheetText" class="visually-hidden">メモの内容</label>
-          <textarea id="sheetText" class="sheet-text" placeholder="ここにメモを書く"></textarea>
+          <label for="sheetText" class="visually-hidden">ノートの内容</label>
+          <textarea id="sheetText" class="sheet-text" placeholder="ここに自由に書けます。日付に関係なく、ずっと残ります。"></textarea>
           <div id="sheetRows" class="sheet-rows" hidden></div>
           <!-- 「済みを消す」ボタン。チェック付きのとき、リストの一番下(「＋ 行を追加」の隣)に移して出す -->
           <button id="sheetClearDone" class="btn" type="button" hidden>済みを消す</button>
@@ -78,6 +72,12 @@
       <div id="modeButtons" class="mode-buttons" role="group" aria-label="操作を選ぶ"></div>
     </div>
   </footer>
+
+  <!-- ノートの画面の下: シートのタブ(Excelのシートのように、下から切り替え・増やせる) -->
+  <nav id="sheetBar" class="sheet-bar" aria-label="シート">
+    <button id="sheetAdd" class="sheet-add" type="button" aria-label="シートを増やす">＋</button>
+    <div id="sheetTabs" class="sheet-tabs" role="tablist"></div>
+  </nav>
 
   <!-- 予定メモを書く画面 -->
   <div id="memoOverlay" class="overlay" hidden>
@@ -130,7 +130,35 @@
       <!-- 大事な注意書き(2行だけ) -->
       <div class="fineprint">
         <p>祝日は、2026年11月時点の祝日の決まりで計算しています。国が決まりを変えると、実際の祝日とずれることがあります。</p>
-        <p>書いた内容は、この機械の中だけに保存されます。ブラウザのデータを消すと、内容も消えます。大事な内容は、ここで書き出して残してください。(メモは、メモの画面の「コピー」で残せます)</p>
+        <p>書いた内容は、この機械の中だけに保存されます。ブラウザのデータを消すと、内容も消えます。大事な内容は、ここで書き出して残してください。(ノートは、シートの操作の「内容をコピー」で残せます)</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- シートの操作メニュー(シートの名前の横の「シートの操作」を押すと開く) -->
+  <div id="sheetMenu" class="overlay" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuTitle" tabindex="-1">
+      <h2 id="menuTitle">シートの操作</h2>
+      <div class="menu-list">
+        <button id="menuRename" class="menu-item" type="button">
+          <span class="menu-name">名前を変える</span>
+          <span class="menu-note">このシートの名前を、付け直します</span>
+        </button>
+        <button id="menuChecklist" class="menu-item" type="button">
+          <span class="menu-name">チェックを付けられる形: <b id="menuChecklistState">オフ</b></span>
+          <span class="menu-note">やること用。1行ごとに、チェックの四角が付きます。押すと切り替わります</span>
+        </button>
+        <button id="menuCopy" class="menu-item" type="button">
+          <span class="menu-name">内容をコピー</span>
+          <span class="menu-note">このシートの文章を、ほかのアプリに貼り付けられます</span>
+        </button>
+        <button id="menuDelete" class="menu-item menu-danger" type="button">
+          <span class="menu-name">このシートを消す</span>
+          <span class="menu-note">中身も消えます</span>
+        </button>
+      </div>
+      <div class="sheet-buttons">
+        <button id="menuClose" class="btn" type="button">閉じる</button>
       </div>
     </section>
   </div>
@@ -152,6 +180,6 @@
 
   <!-- 祝日の計算 → 画面の動き の順に読み込みます -->
   <script src="holidays.js?v=1"></script>
-  <script src="script.js?v=4"></script>
+  <script src="script.js?v=5"></script>
 </body>
 </html>
