@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f3f4f6">
+  <!-- iPhone・Androidの「ホーム画面に追加」で、アプリのように見せる設定 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="My Calendar">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>My Calendar</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body data-mode="write">
+
+  <div class="wrap">
+    <header class="app-header">
+      <div class="month-nav">
+        <button id="prevBtn" class="nav-btn" type="button">＜ 前の月</button>
+        <h1 id="monthTitle" class="month-title" aria-live="polite"></h1>
+        <button id="nextBtn" class="nav-btn" type="button">次の月 ＞</button>
+      </div>
+      <!-- 表示のしかた: カレンダー / 一覧(上から順に) -->
+      <div class="view-switch" role="group" aria-label="表示のしかた">
+        <button class="view-btn" type="button" data-view="calendar" aria-pressed="true">カレンダー表示</button>
+        <button class="view-btn" type="button" data-view="list" aria-pressed="false">一覧表示</button>
+      </div>
+      <div class="sub-nav">
+        <button id="todayBtn" class="sub-btn" type="button">今日にもどる</button>
+        <button id="exportBtn" class="sub-btn" type="button">書き出し</button>
+        <button id="helpBtn" class="sub-btn" type="button">使い方</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="weekdays" class="weekdays" aria-hidden="true">
+        <div class="w-sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="w-sat">土</div>
+      </div>
+      <!-- カレンダー表示 -->
+      <div id="grid" class="grid"></div>
+      <!-- 一覧表示(1日〜月末が上から順に並ぶ) -->
+      <div id="dayList" class="day-list" hidden></div>
+    </main>
+  </div>
+
+  <!-- 画面下の操作バー: 「予定メモ」か「休み・印」を選びます -->
+  <footer class="toolbar">
+    <div class="toolbar-inner">
+      <p id="modeHint" class="mode-hint" aria-live="polite"></p>
+      <div id="modeButtons" class="mode-buttons" role="group" aria-label="操作を選ぶ"></div>
+    </div>
+  </footer>
+
+  <!-- 予定メモを書く画面 -->
+  <div id="memoOverlay" class="overlay" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="memoTitle" tabindex="-1">
+      <h2 id="memoTitle"></h2>
+      <p id="memoSub" class="sheet-sub" hidden></p>
+      <label for="memoText" class="visually-hidden">この日の予定メモ</label>
+      <textarea id="memoText" placeholder="ここに予定メモを書きます"></textarea>
+      <p class="note">書いた予定メモは、自動で保存されます。</p>
+      <div class="sheet-buttons">
+        <button id="memoClear" class="btn btn-danger" type="button">この日を空にする</button>
+        <button id="memoClose" class="btn btn-primary" type="button">閉じる</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 書き出し画面 -->
+  <div id="exportOverlay" class="overlay" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="exportTitle" tabindex="-1">
+      <h2 id="exportTitle">書き出し</h2>
+      <p class="note">チェックを付けた日だけを、一覧にします。祝日の名前は、自動で入ります。</p>
+
+      <fieldset class="field">
+        <legend>期間</legend>
+        <div class="date-row">
+          <input type="date" id="exFrom" min="2000-01-01" max="2099-12-31">
+          <span>から</span>
+          <input type="date" id="exTo" min="2000-01-01" max="2099-12-31">
+          <span>まで</span>
+        </div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>出したい日</legend>
+        <div id="exChecks" class="checks"></div>
+      </fieldset>
+
+      <label class="check check-text"><input type="checkbox" id="exText" checked> 予定メモも一緒に出す</label>
+
+      <p id="exMessage" class="ex-message" aria-live="polite"></p>
+      <label for="exResult" class="visually-hidden">書き出した一覧</label>
+      <textarea id="exResult" readonly></textarea>
+
+      <div class="sheet-buttons">
+        <button id="exCopy" class="btn btn-primary" type="button">コピーする</button>
+        <button id="exClose" class="btn" type="button">閉じる</button>
+      </div>
+      <p class="note">「コピーする」のあと、メモ帳やExcelなどに貼り付けられます。</p>
+    </section>
+  </div>
+
+  <!-- 使い方の画面 -->
+  <div id="helpOverlay" class="overlay" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="helpTitle" tabindex="-1">
+      <h2 id="helpTitle">使い方</h2>
+
+      <h3>表示を切り替える</h3>
+      <ul class="help-list">
+        <li>上の「カレンダー表示」は、月全体が見える表示です。</li>
+        <li>上の「一覧表示」は、1日から月末までが、上から順に並ぶ表示です。予定メモが読みやすくなります。</li>
+        <li>どちらの表示でも、同じように書いたり印を付けたりできます。</li>
+      </ul>
+
+      <h3>予定メモを書く</h3>
+      <ul class="help-list">
+        <li>下の「予定メモ」が選ばれているのを確かめます。</li>
+        <li>書きたい日にちをタップします。</li>
+        <li>予定メモは自動で保存されます。</li>
+      </ul>
+
+      <h3>休み・印を付ける</h3>
+      <ul class="help-list">
+        <li>下の「休み」「○」「×」「△」から1つ選びます。</li>
+        <li>付けたい日にちを、次々タップします。まとめて付けられます。</li>
+        <li>付けた日をもう一度タップすると、取り消せます。</li>
+        <li>印の意味(眼科の日、歯医者の日など)は、ご自分で決めてください。1日に、いくつ重ねて付けてもかまいません。</li>
+        <li>終わったら、下の「予定メモ」を押してください。</li>
+      </ul>
+
+      <h3>祝日</h3>
+      <ul class="help-list">
+        <li>祝日は、最初から自動で入っています(赤い数字と名前)。</li>
+        <li>祝日は、<b>2026年11月時点の「祝日の決まり」</b>で計算しています。国が決まりを変えると、実際の祝日とずれることがあります。</li>
+        <li>春分の日・秋分の日は、計算による予想です。国の正式な発表は、前の年の2月です。</li>
+        <li>ずれていたときは、「休み」を自分で付けると、背景の色で目立たせられます。</li>
+        <li>祝日の計算に、インターネットは使いません。2000年〜2099年に対応しています。</li>
+        <li>決まりが変わったときは、アプリの更新が必要です。更新は、インターネットにつながったときに、自動で受け取ります。</li>
+      </ul>
+
+      <h3>書き出し</h3>
+      <ul class="help-list">
+        <li>「休みの日だけ」「○を付けた日だけ」などを、一覧にして取り出せます。</li>
+        <li>チェックを付けた項目だけが、一覧に出ます。祝日の名前は、自動で入ります。</li>
+        <li>「コピーする」を押して、メモ帳やExcelなどに貼り付けます。</li>
+      </ul>
+
+      <h3>アプリのように使う(ホーム画面に追加)</h3>
+      <ul class="help-list">
+        <li>iPhone: Safariで開き、画面下の共有ボタン(四角から上へ矢印が出ているマーク)を押して、「ホーム画面に追加」を選びます。</li>
+        <li>Android: Chromeで開き、右上の「︙」を押して、「アプリをインストール」または「ホーム画面に追加」を選びます。</li>
+        <li>追加したあとは、ホーム画面のアイコンから開いてください。</li>
+        <li>最初に1回、インターネットにつないで開くと、アプリ本体がその機械に保存されます。そのあとは、電波のない場所でも開けます。ネットにつながっているときは、自動で最新の版に更新されます。</li>
+        <li>ホーム画面から開く場合と、ブラウザで開く場合では、保存場所が別になることがあります。どちらか一方で使い続けてください。</li>
+        <li>操作は、2026年11月時点のものです。機種やバージョンで、表示が少し違うことがあります。</li>
+      </ul>
+
+      <h3>データについて</h3>
+      <ul class="help-list">
+        <li>書いた内容は、この機械(ブラウザ)の中だけに保存されます。外には送られません。</li>
+        <li>別の機械とは、共有されません。</li>
+        <li>ブラウザの履歴やサイトデータを消すと、内容も消えます。大事な内容は、書き出して残してください。</li>
+        <li>祝日は計算で表示しています。大事な予定は、公式のカレンダーでも確かめてください。</li>
+      </ul>
+
+      <div class="sheet-buttons">
+        <button id="helpClose" class="btn btn-primary" type="button">閉じる</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <!-- 祝日の計算 → 画面の動き の順に読み込みます -->
+  <script src="holidays.js?v=1"></script>
+  <script src="script.js?v=2"></script>
+</body>
+</html>
