@@ -5,18 +5,26 @@
    ・月のカレンダー表示 と、上から順に並ぶ「一覧表示」(祝日は holidays.js が自動で計算)
    ・「休み」と「印(○×△)」を、まとめて付ける
    ・日付ごとに「予定メモ」を書く
+   ・日付に関係なく長く残せる「メモ」(シートを自由に増やせる。チェック付きにもできる)
    ・条件を選んで、一覧を書き出す(コピー)
 
    保存のしかた
    ・ブラウザの localStorage に、この形で保存します
      { "2026-11-03": { rest: true, marks: ["maru"], text: "ごはん会" }, ... }
      (text が「予定メモ」の中身です)
+   ・「メモ」(シート)は、別の場所 easyCalendarMemos に、この形で保存します
+     { sheets: [{ id, name: "買い物", text: "牛乳\n✓ 卵", checklist: true }, ...], activeId }
+     (チェックした行は、文章の頭に「✓ 」が付くだけ。だから、チェック付きを切り替えても内容は消えません)
    ・外部には一切送りません。
    ※ dateKey / getHolidayName などは holidays.js にあります。
 */
 
 const STORAGE_KEY = 'easyCalendarData';
 const VIEW_KEY = 'easyCalendarView'; // 最後に使った表示(カレンダー/一覧)を覚えておく
+const MEMO_KEY = 'easyCalendarMemos'; // メモ(シート)の保存場所
+const MAX_SHEETS = 20;                // シートは20枚まで
+const MAX_SHEET_NAME = 20;            // シートの名前は20文字まで
+const DONE_MARK = '✓ ';               // チェックした行の頭に付ける印
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 // 印の一覧(画面に出す順番も、この順)。symbol は画面に出す文字。
@@ -57,16 +65,35 @@ const exMessage = $('exMessage');
 const exResult = $('exResult');
 const exCopy = $('exCopy');
 
+// メモ(シート)の部品
+const memoView = $('memoView');
+const sheetTabs = $('sheetTabs');
+const sheetAdd = $('sheetAdd');
+const sheetText = $('sheetText');
+const sheetRows = $('sheetRows');
+const sheetChecklist = $('sheetChecklist');
+const sheetClearDone = $('sheetClearDone');
+const sheetRename = $('sheetRename');
+const sheetCopy = $('sheetCopy');
+const sheetDelete = $('sheetDelete');
+
+// シートの名前を入れる小さな画面
+const nameOverlay = $('nameOverlay');
+const nameTitle = $('nameTitle');
+const nameInput = $('nameInput');
+
 /* ---------- いまの状態 ---------- */
 let viewYear;              // 表示中の年
 let viewMonth;             // 表示中の月(1〜12)
-let view = loadView();     // 'calendar'=カレンダー表示 / 'list'=一覧表示
+let view = loadView();     // 'calendar'=月表示 / 'list'=一覧表示 / 'memo'=メモ
 let mode = 'write';        // 'write'=予定メモ / 'rest'=休み / 印のid
 let editingKey = null;     // 予定メモを書いている日 ("2026-11-03")
 let activeOverlay = null;  // 開いているポップアップ
 let toastTimer = null;
 let storageWarned = false;
 let data = loadData();
+let memos = loadMemos();   // メモ(シート) { sheets: [...], activeId }
+let nameMode = null;       // シートの名前を入れる画面の用途: 'add'(追加) / 'rename'(名前の変更)
 
 /* ---------- 小さな道具 ---------- */
 function el(tag, className, text) {
@@ -105,13 +132,19 @@ function saveData() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
-    if (!storageWarned) {
-      storageWarned = true;
-      showToast('保存できませんでした。ブラウザの設定を確かめてください。');
-    }
+    warnStorage();
   }
 }
 
+// 保存できなかったとき、最初の1回だけ知らせる
+function warnStorage() {
+  if (!storageWarned) {
+    storageWarned = true;
+    showToast('保存できませんでした。ブラウザの設定を確かめてください。');
+  }
+}
+
+// 開いたときの表示。「メモ」は覚えない(いつも、月表示か一覧表示から始める)
 function loadView() {
   try {
     return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'calendar';
@@ -121,6 +154,7 @@ function loadView() {
 }
 
 function saveView() {
+  if (view === 'memo') return; // 「メモ」のときは、前の表示を覚えたままにする
   try {
     localStorage.setItem(VIEW_KEY, view);
   } catch (e) {
@@ -292,18 +326,21 @@ function renderCalendar() {
   nextBtn.disabled = (viewYear === HOLIDAY_MAX_YEAR && viewMonth === 12);
 
   const isList = view === 'list';
+  const isMemo = view === 'memo';
   // 月表示のときだけ、画面に固定して動かさない(CSSが html[data-view] を見て切り替える)
   document.documentElement.dataset.view = view;
-  weekdays.hidden = isList;
-  grid.hidden = isList;
+  weekdays.hidden = view !== 'calendar';
+  grid.hidden = view !== 'calendar';
   dayList.hidden = !isList;
+  memoView.hidden = !isMemo;
   viewButtons.forEach(btn => {
     const active = btn.dataset.view === view;
     btn.classList.toggle('active', active);
     btn.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
 
-  if (isList) renderListView();
+  if (isMemo) renderMemoView();
+  else if (isList) renderListView();
   else renderGridView();
 }
 
@@ -349,7 +386,7 @@ function goToday() {
 }
 
 function setView(newView) {
-  view = newView === 'list' ? 'list' : 'calendar';
+  view = (newView === 'list' || newView === 'memo') ? newView : 'calendar';
   saveView();
   renderCalendar();
   scrollToFocus();
@@ -582,20 +619,33 @@ function openExport() {
   showOverlay(exportOverlay);
 }
 
-async function copyExport() {
-  const text = exResult.value;
-  if (!text) return;
+// 文字をコピーする。できたら true。(fallbackEl: 古いブラウザ向けに、文字を選択してコピーする入力欄)
+async function copyText(text, fallbackEl) {
   try {
     await navigator.clipboard.writeText(text);
-    showToast('コピーしました。');
-    return;
+    return true;
   } catch (e) {
     // 古いブラウザ向け: 文字を選択してコピー
   }
-  exResult.focus();
-  exResult.select();
+  const box = fallbackEl || document.createElement('textarea');
+  if (!fallbackEl) {
+    box.value = text;
+    box.style.position = 'fixed';
+    box.style.opacity = '0';
+    document.body.appendChild(box);
+  }
+  box.focus();
+  box.select();
   let ok = false;
   try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  if (!fallbackEl) box.remove();
+  return ok;
+}
+
+async function copyExport() {
+  const text = exResult.value;
+  if (!text) return;
+  const ok = await copyText(text, exResult);
   showToast(ok ? 'コピーしました。' : 'コピーできませんでした。文字を長押ししてコピーしてください。');
 }
 
@@ -603,6 +653,306 @@ exportOverlay.addEventListener('input', refreshExport);
 exportOverlay.addEventListener('change', refreshExport);
 exCopy.addEventListener('click', copyExport);
 $('exClose').addEventListener('click', closeOverlay);
+
+/* ---------- メモ(日付に関係なく、長く残せる。シートを自由に増やせる) ---------- */
+function newSheetId() {
+  return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function defaultMemos() {
+  const id = newSheetId();
+  return { sheets: [{ id: id, name: 'メモ', text: '', checklist: false }], activeId: id };
+}
+
+// 保存してあるメモを読む。こわれたデータのときは、空のメモ1枚から始める
+function loadMemos() {
+  try {
+    const raw = localStorage.getItem(MEMO_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.sheets)) {
+        const sheets = parsed.sheets
+          .filter(s => s && typeof s === 'object')
+          .slice(0, MAX_SHEETS)
+          .map(s => ({
+            id: (typeof s.id === 'string' && s.id) ? s.id : newSheetId(),
+            name: (typeof s.name === 'string' && s.name.trim() !== '') ? s.name.trim().slice(0, MAX_SHEET_NAME) : 'メモ',
+            text: typeof s.text === 'string' ? s.text : '',
+            checklist: s.checklist === true,
+          }));
+        if (sheets.length > 0) {
+          const activeId = sheets.some(s => s.id === parsed.activeId) ? parsed.activeId : sheets[0].id;
+          return { sheets: sheets, activeId: activeId };
+        }
+      }
+    }
+  } catch (e) {
+    // 読めなかったら、空のメモから始める(画面が真っ白にならないように)
+  }
+  return defaultMemos();
+}
+
+function saveMemos() {
+  try {
+    localStorage.setItem(MEMO_KEY, JSON.stringify(memos));
+  } catch (e) {
+    warnStorage();
+  }
+}
+
+function activeSheet() {
+  return memos.sheets.find(s => s.id === memos.activeId) || memos.sheets[0];
+}
+
+// 文章を行に分ける。頭に「✓」がある行は「チェック済み」
+function parseLines(text) {
+  return text.split('\n').map(line => {
+    const m = /^✓\s?/.exec(line);
+    return m ? { done: true, text: line.slice(m[0].length) } : { done: false, text: line };
+  });
+}
+
+// シートのタブ(横に並ぶ)
+function renderSheetTabs() {
+  sheetTabs.innerHTML = '';
+  memos.sheets.forEach(sheet => {
+    const tab = el('button', 'sheet-tab', sheet.name);
+    tab.type = 'button';
+    tab.dataset.id = sheet.id;
+    tab.setAttribute('role', 'tab');
+    const active = sheet.id === memos.activeId;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    sheetTabs.appendChild(tab);
+  });
+  const current = sheetTabs.querySelector('.sheet-tab.active');
+  if (current) current.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+// チェック付きのときの、1行ぶん
+function createRow(line) {
+  const row = el('div', line.done ? 'check-row done' : 'check-row');
+  const label = el('label', 'row-check');
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = line.done;
+  box.setAttribute('aria-label', '済み');
+  label.appendChild(box);
+  const input = document.createElement('textarea');
+  input.className = 'row-text';
+  input.rows = 1;
+  input.value = line.text;
+  input.setAttribute('aria-label', 'やること');
+  row.appendChild(label);
+  row.appendChild(input);
+  return row;
+}
+
+// 入力欄を、中の文字の量に合わせて高くする
+function autoGrow(box) {
+  box.style.height = 'auto';
+  box.style.height = box.scrollHeight + 'px';
+}
+
+function renderRows() {
+  sheetRows.innerHTML = '';
+  parseLines(activeSheet().text).forEach(line => sheetRows.appendChild(createRow(line)));
+  // リストの一番下: 「＋ 行を追加」と「済みを消す」
+  const footer = el('div', 'row-footer');
+  const add = el('button', 'row-add', '＋ 行を追加');
+  add.type = 'button';
+  footer.appendChild(add);
+  footer.appendChild(sheetClearDone);
+  sheetRows.appendChild(footer);
+  sheetRows.querySelectorAll('.row-text').forEach(autoGrow);
+}
+
+// 画面の行 → 文章(チェックした行の頭に「✓ 」を付ける)
+function rowsToText() {
+  return Array.from(sheetRows.querySelectorAll('.check-row'), row => {
+    const done = row.querySelector('input[type="checkbox"]').checked;
+    const text = row.querySelector('.row-text').value.replace(/\r?\n/g, ' ');
+    return (done ? DONE_MARK : '') + text;
+  }).join('\n');
+}
+
+function saveRows() {
+  activeSheet().text = rowsToText();
+  saveMemos();
+}
+
+// 行を足す(rowの下。null なら一番下)。足した行に、すぐ書けるようにする
+function addRowAfter(row) {
+  const newRow = createRow({ done: false, text: '' });
+  if (row) row.after(newRow);
+  else sheetRows.insertBefore(newRow, sheetRows.querySelector('.row-footer'));
+  const input = newRow.querySelector('.row-text');
+  autoGrow(input);
+  input.focus();
+  saveRows();
+}
+
+function renderSheetBody() {
+  const sheet = activeSheet();
+  sheetChecklist.checked = sheet.checklist;
+  sheetClearDone.hidden = !sheet.checklist;
+  sheetText.hidden = sheet.checklist;
+  sheetRows.hidden = !sheet.checklist;
+  if (sheet.checklist) renderRows();
+  else sheetText.value = sheet.text;
+}
+
+function renderMemoView() {
+  renderSheetTabs();
+  renderSheetBody();
+}
+
+// シートの名前を入れる小さな画面
+function openNameDialog(mode) {
+  if (mode === 'add' && memos.sheets.length >= MAX_SHEETS) {
+    showToast(`シートは${MAX_SHEETS}枚までです。`);
+    return;
+  }
+  nameMode = mode;
+  nameTitle.textContent = mode === 'add' ? '新しいシートの名前' : 'シートの名前を変える';
+  nameInput.value = mode === 'add' ? 'メモ' + (memos.sheets.length + 1) : activeSheet().name;
+  showOverlay(nameOverlay);
+  nameInput.focus();
+  nameInput.select();
+}
+
+function submitName() {
+  const name = nameInput.value.trim().slice(0, MAX_SHEET_NAME);
+  if (name === '') {
+    showToast('名前を入れてください。');
+    return;
+  }
+  if (nameMode === 'add') {
+    const sheet = { id: newSheetId(), name: name, text: '', checklist: false };
+    memos.sheets.push(sheet);
+    memos.activeId = sheet.id;
+  } else if (nameMode === 'rename') {
+    activeSheet().name = name;
+  }
+  nameMode = null;
+  saveMemos();
+  closeOverlay();
+  renderMemoView();
+}
+
+function deleteSheet() {
+  const sheet = activeSheet();
+  if (!confirm(`シート「${sheet.name}」を消します。中身も消えます。よろしいですか?`)) return;
+  const index = memos.sheets.indexOf(sheet);
+  memos.sheets.splice(index, 1);
+  if (memos.sheets.length === 0) {
+    memos = defaultMemos(); // シートが1枚もなくならないようにする
+  } else {
+    memos.activeId = memos.sheets[Math.min(index, memos.sheets.length - 1)].id;
+  }
+  saveMemos();
+  renderMemoView();
+}
+
+async function copySheet() {
+  const sheet = activeSheet();
+  if (sheet.text.trim() === '') {
+    showToast('このシートは空です。');
+    return;
+  }
+  const ok = await copyText(sheet.text);
+  showToast(ok ? 'コピーしました。' : 'コピーできませんでした。');
+}
+
+// チェックした行を、まとめて消す
+function clearDoneRows() {
+  const sheet = activeSheet();
+  const lines = parseLines(sheet.text);
+  const doneCount = lines.filter(l => l.done).length;
+  if (doneCount === 0) {
+    showToast('チェックした行は、ありません。');
+    return;
+  }
+  if (!confirm(`チェックした${doneCount}行を、消します。よろしいですか?`)) return;
+  sheet.text = lines.filter(l => !l.done).map(l => l.text).join('\n');
+  saveMemos();
+  renderSheetBody();
+}
+
+// --- メモの画面の操作 ---
+// 普通の文章のとき: 書くたびに自動で保存
+sheetText.addEventListener('input', () => {
+  activeSheet().text = sheetText.value;
+  saveMemos();
+});
+
+// チェック付きのとき
+sheetRows.addEventListener('input', e => {
+  if (e.target.classList.contains('row-text')) {
+    autoGrow(e.target);
+    saveRows();
+  }
+});
+
+sheetRows.addEventListener('change', e => {
+  if (e.target.type === 'checkbox') {
+    e.target.closest('.check-row').classList.toggle('done', e.target.checked);
+    saveRows();
+  }
+});
+
+sheetRows.addEventListener('keydown', e => {
+  const input = e.target.closest('.row-text');
+  if (!input || e.isComposing || e.keyCode === 229) return; // 日本語の変換中は、何もしない
+  const row = input.closest('.check-row');
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addRowAfter(row); // 改行キーで、下に新しい行
+  } else if (e.key === 'Backspace' && input.value === '') {
+    const prev = row.previousElementSibling;
+    if (prev && prev.classList.contains('check-row')) {
+      e.preventDefault(); // 空の行で削除キー → その行を消して、前の行へ
+      row.remove();
+      const prevInput = prev.querySelector('.row-text');
+      prevInput.focus();
+      prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
+      saveRows();
+    }
+  }
+});
+
+sheetRows.addEventListener('click', e => {
+  if (e.target.closest('.row-add')) addRowAfter(null);
+});
+
+sheetTabs.addEventListener('click', e => {
+  const tab = e.target.closest('.sheet-tab');
+  if (!tab || tab.dataset.id === memos.activeId) return;
+  memos.activeId = tab.dataset.id;
+  saveMemos();
+  renderMemoView();
+});
+
+sheetChecklist.addEventListener('change', () => {
+  activeSheet().checklist = sheetChecklist.checked;
+  saveMemos();
+  renderSheetBody(); // 内容は文章のまま。見せ方だけ切り替わる
+});
+
+sheetAdd.addEventListener('click', () => openNameDialog('add'));
+sheetRename.addEventListener('click', () => openNameDialog('rename'));
+sheetDelete.addEventListener('click', deleteSheet);
+sheetCopy.addEventListener('click', copySheet);
+sheetClearDone.addEventListener('click', clearDoneRows);
+
+$('nameOk').addEventListener('click', submitName);
+$('nameCancel').addEventListener('click', () => { nameMode = null; closeOverlay(); });
+nameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+    e.preventDefault();
+    submitName();
+  }
+});
 
 /* ---------- ボタンとイベントをつなぐ ---------- */
 grid.addEventListener('click', e => {
@@ -631,7 +981,7 @@ $('todayBtn').addEventListener('click', goToday);
 $('exportBtn').addEventListener('click', openExport);
 
 // ポップアップの外側(黒い部分)をタップしたら閉じる。予定メモは自動保存済みなので安心
-[memoOverlay, exportOverlay].forEach(overlay => {
+[memoOverlay, exportOverlay, nameOverlay].forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target === overlay) closeOverlay();
   });
@@ -643,7 +993,8 @@ document.addEventListener('keydown', e => {
 
 // 日付が変わったあとにアプリへ戻ったとき、「今日」の印を更新する
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !activeOverlay) renderCalendar();
+  // (メモの画面は、書いている途中で作り直さない)
+  if (document.visibilityState === 'visible' && !activeOverlay && view !== 'memo') renderCalendar();
 });
 
 /* ---------- 起動 ---------- */

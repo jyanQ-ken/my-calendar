@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body data-mode="write">
 
@@ -30,6 +30,7 @@
         <div class="view-switch" role="group" aria-label="表示のしかた">
           <button class="view-btn" type="button" data-view="calendar" aria-pressed="true">月表示</button>
           <button class="view-btn" type="button" data-view="list" aria-pressed="false">一覧表示</button>
+          <button class="view-btn" type="button" data-view="memo" aria-pressed="false">メモ</button>
         </div>
         <div class="sub-nav">
           <button id="todayBtn" class="sub-btn" type="button">今日</button>
@@ -46,6 +47,27 @@
       <div id="grid" class="grid"></div>
       <!-- 一覧表示(1日〜月末が上から順に並ぶ。こちらはスクロールできる) -->
       <div id="dayList" class="day-list" hidden></div>
+
+      <!-- メモ(日付に関係なく、長く残せる。シートを自由に増やせる) -->
+      <section id="memoView" class="memo-view" hidden aria-label="メモ">
+        <div class="sheet-tabs-wrap">
+          <div id="sheetTabs" class="sheet-tabs" role="tablist" aria-label="シート"></div>
+          <button id="sheetAdd" class="sheet-add" type="button" aria-label="シートを増やす">＋</button>
+        </div>
+        <div class="memo-actions">
+          <label class="check"><input type="checkbox" id="sheetChecklist"> チェック付き</label>
+          <button id="sheetRename" class="btn" type="button">名前</button>
+          <button id="sheetCopy" class="btn" type="button">コピー</button>
+          <button id="sheetDelete" class="btn btn-danger" type="button">消す</button>
+        </div>
+        <div class="memo-paper">
+          <label for="sheetText" class="visually-hidden">メモの内容</label>
+          <textarea id="sheetText" class="sheet-text" placeholder="ここにメモを書く"></textarea>
+          <div id="sheetRows" class="sheet-rows" hidden></div>
+          <!-- 「済みを消す」ボタン。チェック付きのとき、リストの一番下(「＋ 行を追加」の隣)に移して出す -->
+          <button id="sheetClearDone" class="btn" type="button" hidden>済みを消す</button>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -108,7 +130,20 @@
       <!-- 大事な注意書き(2行だけ) -->
       <div class="fineprint">
         <p>祝日は、2026年11月時点の祝日の決まりで計算しています。国が決まりを変えると、実際の祝日とずれることがあります。</p>
-        <p>書いた内容は、この機械の中だけに保存されます。ブラウザのデータを消すと、内容も消えます。大事な内容は、ここで書き出して残してください。</p>
+        <p>書いた内容は、この機械の中だけに保存されます。ブラウザのデータを消すと、内容も消えます。大事な内容は、ここで書き出して残してください。(メモは、メモの画面の「コピー」で残せます)</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- シートの名前を入れる小さな画面(シートを増やすとき・名前を変えるとき) -->
+  <div id="nameOverlay" class="overlay" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="nameTitle" tabindex="-1">
+      <h2 id="nameTitle">シートの名前</h2>
+      <label for="nameInput" class="visually-hidden">シートの名前</label>
+      <input id="nameInput" class="text-input" type="text" maxlength="20" autocomplete="off">
+      <div class="sheet-buttons">
+        <button id="nameCancel" class="btn" type="button">やめる</button>
+        <button id="nameOk" class="btn btn-primary" type="button">決定</button>
       </div>
     </section>
   </div>
@@ -117,6 +152,6 @@
 
   <!-- 祝日の計算 → 画面の動き の順に読み込みます -->
   <script src="holidays.js?v=1"></script>
-  <script src="script.js?v=3"></script>
+  <script src="script.js?v=4"></script>
 </body>
 </html>

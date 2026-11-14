@@ -380,6 +380,140 @@ body:not([data-mode="write"]) .day-list {
 .list-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 6px; }
 .list-nav .nav-btn { background: var(--card); }
 
+/* ---------- メモ(日付に関係なく、長く残せる。シートを自由に増やせる) ---------- */
+/* メモの画面では、月の切り替え・今日・書き出し・下の操作バーは使わないので隠す */
+html[data-view="memo"] .month-nav,
+html[data-view="memo"] .sub-nav,
+html[data-view="memo"] .toolbar { display: none; }
+html[data-view="memo"] body { padding-bottom: 24px; }
+
+.memo-view { display: flex; flex-direction: column; gap: 8px; }
+
+/* シートのタブ(横に並ぶ。はみ出したら横にスクロール) */
+.sheet-tabs-wrap { display: flex; align-items: center; gap: 6px; }
+
+.sheet-tabs {
+  display: flex;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 0;
+  scrollbar-width: none;
+}
+.sheet-tabs::-webkit-scrollbar { display: none; }
+
+.sheet-tab {
+  flex: 0 0 auto;
+  min-height: 40px;
+  max-width: 70vw;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-btn);
+  background: var(--segment-bg);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: var(--w-mid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+/* いま開いているシート */
+.sheet-tab.active { background: var(--accent); color: var(--accent-text); }
+
+.sheet-add {
+  flex: 0 0 auto;
+  width: 44px;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--r-btn);
+  background: var(--card);
+  color: var(--accent);
+  font-size: 24px;
+  font-weight: var(--w-mid);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* シートの操作(チェック付き・名前・コピー・消す) */
+.memo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.memo-actions .check { min-height: 40px; padding: 0 12px; font-size: 15px; }
+.memo-actions .btn { flex: 0 0 auto; min-height: 40px; padding: 0 14px; font-size: 15px; }
+
+/* 書く場所 */
+.memo-paper {
+  background: var(--card);
+  border: var(--card-border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.sheet-text {
+  display: block;
+  width: 100%;
+  min-height: 55vh;
+  border: 0;
+  border-radius: 0;
+  padding: 14px;
+  font-size: 18px;
+  line-height: 1.7;
+  background: transparent;
+  resize: none;
+}
+
+.sheet-rows { padding: 4px 8px 8px; min-height: 40vh; }
+
+.check-row { display: flex; align-items: flex-start; gap: 6px; border-bottom: 1px solid var(--line); }
+
+.row-check {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-height: 48px;
+  cursor: pointer;
+}
+.row-check input { width: 26px; height: 26px; accent-color: var(--accent); }
+
+.row-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 11px 4px;
+  font-size: 18px;
+  line-height: 1.5;
+  resize: none;
+  overflow: hidden;
+}
+/* チェックした行は、線を引いて薄くする */
+.check-row.done .row-text { text-decoration: line-through; color: var(--muted); }
+
+/* リストの一番下: 「＋ 行を追加」と「済みを消す」 */
+.row-footer { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.row-footer .btn { flex: 0 0 auto; min-height: 40px; padding: 0 14px; font-size: 15px; }
+
+.row-add {
+  flex: 1 1 auto;
+  min-height: 48px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: var(--w-mid);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sheet-text:focus-visible,
+.row-text:focus-visible { outline-offset: -3px; }
+
 /* ---------- 画面下の操作バー(低め) ---------- */
 .toolbar {
   position: fixed;
@@ -506,6 +640,7 @@ html[data-view="calendar"] .toolbar {
 .note { font-size: 15px; color: var(--muted); }
 
 textarea,
+input[type="text"],
 input[type="date"] {
   font: inherit;
   font-size: 18px;
@@ -517,6 +652,7 @@ input[type="date"] {
 }
 
 textarea { width: 100%; min-height: 150px; resize: vertical; }
+.text-input { width: 100%; }
 
 .sheet-buttons { display: flex; gap: 8px; margin-top: 12px; }
 
