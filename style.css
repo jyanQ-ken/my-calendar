@@ -748,6 +748,7 @@ textarea { width: 100%; min-height: 150px; resize: vertical; }
   cursor: pointer;
 }
 .check:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.check:has(input:disabled) { opacity: 0.7; cursor: default; }
 .check input { width: 22px; height: 22px; accent-color: var(--accent); }
 .check .mark-sym { font-size: 24px; }
 .check-text { margin-top: 12px; }

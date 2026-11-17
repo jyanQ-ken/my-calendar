@@ -511,9 +511,14 @@ $('memoClear').addEventListener('click', () => {
 });
 
 /* ---------- 書き出し ---------- */
-// チェックできるのは「休み」と「印」。祝日の名前は、チェックなしで自動で入る
+// 「出したい日」に選べるのは「休み」「印」「予定メモがある日」。祝日の名前は、チェックなしで自動で入る
 const EXPORT_ITEMS = [{ id: 'rest', label: '休み' }]
-  .concat(MARKS.map(m => ({ id: m.id, label: m.symbol, isMark: true })));
+  .concat(MARKS.map(m => ({ id: m.id, label: m.symbol, isMark: true })))
+  .concat([{ id: 'memo', label: '予定メモがある日' }]);
+
+// 「予定メモも一緒に出す」を、本人が選んでいる状態。
+// 「予定メモがある日」を選んでいる間は、自動でオンにして変えられなくする。外したら、この状態にもどす
+let exTextChoice = true;
 
 function buildExportChecks() {
   EXPORT_ITEMS.forEach(item => {
@@ -545,6 +550,19 @@ function refreshExport() {
   exCopy.disabled = true;
 
   const checkedIds = Array.from(exChecks.querySelectorAll('input:checked'), i => i.value);
+
+  // 「予定メモがある日」を選んでいる間は、予定メモの文章の列を、いつも出す
+  // (「予定メモも一緒に出す」は、自動でオンにして、変えられなくする)
+  const memoDaysChecked = checkedIds.includes('memo');
+  if (memoDaysChecked && !exText.disabled) {
+    exTextChoice = exText.checked;
+    exText.checked = true;
+    exText.disabled = true;
+  } else if (!memoDaysChecked && exText.disabled) {
+    exText.disabled = false;
+    exText.checked = exTextChoice;
+  }
+
   if (checkedIds.length === 0) {
     exMessage.textContent = '出したい日にチェックを付けてください。';
     return;
@@ -567,8 +585,9 @@ function refreshExport() {
   }
 
   const wantRest = checkedIds.includes('rest');                 // 「休み」にチェックがあるか
-  const markIds = checkedIds.filter(id => id !== 'rest');       // チェックされた印
-  const withText = exText.checked;
+  const wantMemoDays = memoDaysChecked;                         // 「予定メモがある日」にチェックがあるか
+  const markIds = checkedIds.filter(id => id !== 'rest' && id !== 'memo'); // チェックされた印
+  const withText = exText.checked;                              // 予定メモの文章の列を出すか
 
   // 列は「チェックした項目」だけ。祝日の列は、名前が自動で入る
   const header = ['日付', '曜日'];
@@ -588,8 +607,10 @@ function refreshExport() {
     const entry = normalize(data[dateKey(y, m, d)]);
     const holiday = getHolidayName(y, m, d);
 
-    // 出す日: 「休み」にチェックして休みの日 / チェックした印が付いている日
-    const hit = (wantRest && entry.rest) || entry.marks.some(id => markIds.includes(id));
+    // 出す日: 「休み」にチェックして休みの日 / チェックした印が付いている日 / 「予定メモがある日」にチェックして予定メモがある日
+    const hit = (wantRest && entry.rest)
+      || entry.marks.some(id => markIds.includes(id))
+      || (wantMemoDays && entry.text !== '');
     if (!hit) continue;
 
     count++;
